@@ -139,28 +139,39 @@ sealed class MosquitoCritob : Critob
 
 		Relationships self = new(Mosquito);
 
+		// 静态世界.生物模板.所有模板
 		foreach (var template in StaticWorld.creatureTemplates) {
+			// quantified 量化
 			if (template.quantified) {
+				// 忽略
 				self.Ignores(template.type);
+				// 被忽略
 				self.IgnoredBy(template.type);
 			}
 		}
 
+		// 是否包含在内
 		self.IsInPack(Mosquito, 1f);
 
+		// 吃
 		self.Eats(CreatureType.Slugcat, 0.4f);
 		self.Eats(CreatureType.Scavenger, 0.6f);
 		self.Eats(CreatureType.LizardTemplate, 0.3f);
-		self.Eats(CreatureType.CicadaA, 0.4f);
+		self.Eats(CreatureType.CicadaA, 0.4f); // 蝉乌贼
+											   // 蝉 A，蝉 B（分别是白色和黑色的鱿鱼）
 
+		// 恐吓
 		self.Intimidates(CreatureType.LizardTemplate, 0.35f);
 		self.Intimidates(CreatureType.CicadaA, 0.3f);
 
+		// 攻击
 		self.AttackedBy(CreatureType.Slugcat, 0.2f);
 		self.AttackedBy(CreatureType.Scavenger, 0.2f);
 
+		// 被吃
 		self.EatenBy(CreatureType.BigSpider, 0.35f);
 
+		// 恐惧
 		self.Fears(CreatureType.Spider, 0.2f);
 		self.Fears(CreatureType.BigSpider, 0.2f);
 		self.Fears(CreatureType.SpitterSpider, 0.6f);
@@ -176,35 +187,62 @@ sealed class MosquitoCritob : Critob
 		return new Mosquito(acrit);
 	}
 
+														// 运动连接 
 	public override void ConnectionIsAllowed(AImap map, MovementConnection connection, ref bool? allowed)
 	{
+		// allowed
+		//null：不干预，使用游戏默认判断。
+		//true：强制允许。
+		//false：强制禁止。
+		// 如果 allowed 原本是 null（不干预）：
+		//表达式为 true → 结果还是 null，继续不干预。
+		//表达式为 false → 结果变成 false，强制禁止。
+
+		// DLL 不会穿过起点和终点在同一房间内的捷径——它们只穿过房间出口。
+		// 要模拟这种行为，可以使用类似下面的代码：
 		// DLLs don't travel through shortcuts that start and end in the same room—they only travel through room exits.
 		// To emulate this behavior, use something like:
 
+		// 一般捷径
 		//ShortcutData.Type n = ShortcutData.Type.Normal;
-		//if (connection.type == MovementConnection.MovementType.ShortCut) {
-		//    allowed &=
-		//        connection.startCoord.TileDefined && map.room.shortcutData(connection.StartTile).shortCutType == n ||
-		//        connection.destinationCoord.TileDefined && map.room.shortcutData(connection.DestTile).shortCutType == n
-		//        ;
-		//} else if (connection.type == MovementConnection.MovementType.BigCreatureShortCutSqueeze) {
-		//    allowed &=
-		//        map.room.GetTile(connection.startCoord).Terrain == Room.Tile.TerrainType.ShortcutEntrance && map.room.shortcutData(connection.StartTile).shortCutType == n ||
-		//        map.room.GetTile(connection.destinationCoord).Terrain == Room.Tile.TerrainType.ShortcutEntrance && map.room.shortcutData(connection.DestTile).shortCutType == n
-		//        ;
+		//if (connection.type == MovementConnection.MovementType.ShortCut)
+		//{
+		//	// & 是逻辑与
+		//	// && 的优先级高于 ||
+		//	// TileDefined 具体地块
+		//	// startCoord 起始坐标
+		//	// destinationCoord 目的地坐标
+		//	allowed &=
+		//		(connection.startCoord.TileDefined && map.room.shortcutData(connection.StartTile).shortCutType == n) ||
+		//		(connection.destinationCoord.TileDefined && map.room.shortcutData(connection.DestTile).shortCutType == n)
+		//		;
+		//}
+		//// BigCreatureShortCutSqueeze（大型生物挤过捷径）
+		//else if (connection.type == MovementConnection.MovementType.BigCreatureShortCutSqueeze)
+		//{
+		//	// ShortcutEntrance 快捷入口
+		//	allowed &=
+		//		(map.room.GetTile(connection.startCoord).Terrain == Room.Tile.TerrainType.ShortcutEntrance && map.room.shortcutData(connection.StartTile).shortCutType == n) ||
+		//		(map.room.GetTile(connection.destinationCoord).Terrain == Room.Tile.TerrainType.ShortcutEntrance && map.room.shortcutData(connection.DestTile).shortCutType == n)
+		//		;
 		//}
 	}
 
 	public override void TileIsAllowed(AImap map, IntVector2 tilePos, ref bool? allowed)
 	{
+		// 像秃鹫、Miros 鸟和 DLL 这样的大型生物需要 2 格自由空间才能移动。利维坦需要 4 格！它们都无法通过单格隧道。
+		// 要模拟这种行为，可以使用类似下面的代码：
 		// Large creatures like vultures, miros birds, and DLLs need 2 tiles of free space to move around in. Leviathans need 4! None of them can fit in one-tile tunnels.
 		// To emulate this behavior, use something like:
 
 		//allowed &= map.IsFreeSpace(tilePos, tilesOfFreeSpace: 2);
 
+		// DLL 虽然胖，但能挤进捷径。
+		// 要模拟这种行为，可以使用类似下面的代码：
 		// DLLs can fit into shortcuts despite being fat.
 		// To emulate this behavior, use something like:
 
+		// ShortcutEntrance 快捷入口
 		//allowed |= map.room.GetTile(tilePos).Terrain == Room.Tile.TerrainType.ShortcutEntrance;
 	}
 
@@ -229,6 +267,7 @@ sealed class MosquitoCritob : Critob
 	public override Color DevtoolsMapColor(AbstractCreature acrit)
 	{
 		// Default would return the mosquito's icon color (which is gray), which is fine, but red is better.
+		// 默认情况下会返回蚊子的图标颜色（即灰色），这样也可以，但红色更好。
 		return new Color(.7f, .4f, .4f);
 	}
 
@@ -236,6 +275,8 @@ sealed class MosquitoCritob : Critob
 	{
 		// If you don't need the `forObject` parameter, store one ItemProperties instance as a static object and return that.
 		// The CentiShields example demonstrates this.
+		// 如果不需要 `forObject` 参数，请将一个 ItemProperties 实例作为静态对象存储，并返回该实例。
+		// CentiShields 示例对此进行了演示。
 		if (crit is Mosquito mosquito) {
 			return new MosquitoProperties(mosquito);
 		}
