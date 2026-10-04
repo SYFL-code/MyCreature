@@ -1,0 +1,201 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	
+	<PropertyGroup>
+		<TargetFramework>net48</TargetFramework>
+		<LangVersion>14</LangVersion>
+		<Nullable>enable</Nullable>
+		<Deterministic>true</Deterministic>
+		<DeterministicSourcePaths>false</DeterministicSourcePaths>
+	</PropertyGroup>
+	
+	
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+		<DebugType>portable</DebugType>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+		<PathMap>$(MSBuildProjectDirectory)=/$(SolutionName)</PathMap>
+		<DebugType>none</DebugType>
+	</PropertyGroup>
+
+
+	<PropertyGroup>
+		<!-- 如果环境变量未设置，则使用硬编码默认路径（请根据实际情况修改） -->
+		<RainWorldDir Condition="'$(RainWorldDir)' == ''">E:/SteamLibrary/steamapps/common/Rain World</RainWorldDir>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- 0. CommonUtils 共享文件 -->
+		<Compile Include="../../CommonUtils/src/**/*.cs" Exclude="../../CommonUtils/src/Zname/**/*.cs; ../../CommonUtils/src/obj/**/*.cs; ../../CommonUtils/src/bin/**/*.cs">
+			<Link>CommonUtils/%(RecursiveDir)%(Filename)%(Extension)</Link>
+		</Compile>
+
+		<Compile Condition="'$(Configuration)' == 'Debug'" Include="../../CommonUtils/src/Zname/**/*.cs">
+			<Link>CommonUtils/Zname/%(RecursiveDir)%(Filename)%(Extension)</Link>
+		</Compile>
+	
+		<!-- 1. 项目本地库 -->
+		<Reference Include="../../CommonUtils/lib/*.dll" Exclude="../../CommonUtils/lib/Newtonsoft.Json.dll">
+			<Private>false</Private>
+		</Reference>
+
+		<Reference Include="../../CommonUtils/lib/Newtonsoft.Json.dll">
+			<Private>false</Private>
+		</Reference>
+		
+		<!-- 2. Managed 包 -->
+		<Reference Include="$(RainWorldDir)/RainWorld_Data/Managed/Assembly-CSharp-firstpass.dll">
+			<Private>false</Private>
+		</Reference>
+		
+		<Reference Include="$(RainWorldDir)/RainWorld_Data/Managed/GoKit.dll">
+			<Private>false</Private>
+		</Reference>
+
+		<!-- <Reference Include="$(RainWorldDir)/RainWorld_Data/Managed/Newtonsoft.Json.dll">
+			<Private>false</Private>
+		</Reference> -->
+
+		<Reference Include="$(RainWorldDir)/RainWorld_Data/Managed/com.playeveryware.eos-Editor.steam.utility.dll">
+			<Private>false</Private>
+		</Reference>
+
+		<Reference Include="$(RainWorldDir)/RainWorld_Data/Managed/com.rlabrecque.steamworks.net.dll">
+			<Private>false</Private>
+		</Reference>
+
+		<!-- 3. BepInEx 核心 -->
+		<Reference Include="$(RainWorldDir)/BepInEx/core/*.dll" Exclude="$(RainWorldDir)/BepInEx/core/0Harmony20.dll">
+		<Private>false</Private>
+		</Reference>
+
+		<Reference Include="$(RainWorldDir)/BepInEx/core/0Harmony20.dll" Aliases="Harmony20">
+			<Private>false</Private>
+		</Reference>
+
+		<!-- 4. BepInEx 插件（其他模组） -->
+		<Reference Include="$(RainWorldDir)/BepInEx/plugins/*.dll">
+		<Private>false</Private>
+		</Reference>
+
+		<!-- 5. BepInEx 工具库 -->
+		<Reference Include="$(RainWorldDir)/BepInEx/utils/*.dll">
+		<Private>false</Private>
+		</Reference>
+
+		<!-- 6. Unity 引擎 -->
+		<Reference Include="$(RainWorldDir)/RainWorld_Data/Managed/Unity*.dll">
+		<Private>false</Private>
+		</Reference>
+	</ItemGroup>
+
+
+	<ItemGroup>
+	  <!-- <PackageReference Include="MonoWeaver.Cecil10" Version="0.2.0" /> -->
+	  <PackageReference Include="System.Memory" Version="4.6.3" />
+	  <PackageReference Include="PolySharp" Version="1.16.0">
+		<PrivateAssets>all</PrivateAssets>
+		<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+	  </PackageReference>
+	</ItemGroup>
+
+	
+	<!-- 生成时排除 Debug 目录下的所有文件 -->
+	<ItemGroup>
+	  <Compile Remove="Debug\**" />
+	  <EmbeddedResource Remove="Debug\**" />
+	  <None Remove="Debug\**" />
+	  <Reference Remove="Debug\**" />
+	</ItemGroup>
+
+
+
+	<Target Name="GenerateBuildInfo" BeforeTargets="BeforeBuild">
+		<!-- 确保 version.txt 存在（位于项目根目录，即 src 的上一级） -->
+		<WriteLinesToFile Condition="!Exists('../version.txt')" File="../version.txt" Lines="00" Overwrite="true" />
+
+		<!-- 读取 version.txt -->
+		<ReadLinesFromFile File="../version.txt">
+			<Output TaskParameter="Lines" PropertyName="CurrentVersionNumberRaw" />
+		</ReadLinesFromFile>
+
+		<!-- 修剪并默认 00 -->
+		<PropertyGroup>
+			<CurrentVersionNumber>$([System.String]::Copy('$(CurrentVersionNumberRaw)').Trim())</CurrentVersionNumber>
+			<CurrentVersionNumber Condition="'$(CurrentVersionNumber)' == '' or '$(CurrentVersionNumber)' == ' '">00</CurrentVersionNumber>
+		</PropertyGroup>
+
+		<!-- 递增版本号 -->
+		<PropertyGroup>
+			<CurrentNumberParsed>$([System.Int32]::Parse('$(CurrentVersionNumber)'))</CurrentNumberParsed>
+			<NewVersionNumberInt>$([MSBuild]::Add($(CurrentNumberParsed), 1))</NewVersionNumberInt>
+			<NewVersionNumber>$([System.String]::Format('{0:D2}', $(NewVersionNumberInt)))</NewVersionNumber>
+			<NewVersionString>v$(NewVersionNumber)</NewVersionString>
+			<BuildTime>$([System.DateTime]::Now.ToString("yyyy-MM-dd HH:mm:ss"))</BuildTime>
+		</PropertyGroup>
+
+		<!-- 写回 version.txt -->
+		<WriteLinesToFile File="../version.txt" Lines="$(NewVersionNumber)" Overwrite="true" />
+
+		<!-- 调用 PowerShell 脚本 -->
+		<Exec Command="powershell -ExecutionPolicy Bypass -File &quot;../../CommonUtils/GenerateBuildInfo.ps1&quot; -VersionString &quot;$(NewVersionString)&quot; -BuildTime &quot;$(BuildTime)&quot;" />
+
+		<!-- 输出版本号和编译时间 -->
+		<Message Importance="High" Text="Version: $(NewVersionString)" />
+		<Message Importance="High" Text="Build Time: $(BuildTime)" />
+	</Target>
+
+	<ItemGroup>
+		<Compile Include="../../CommonUtils/src/obj/$(Configuration)/net48/BuildInfo.g.cs">
+			<Link>CommonUtils/%(RecursiveDir)%(Filename)%(Extension)</Link>
+			<Visible>false</Visible>
+			<AutoGen>true</AutoGen>
+			<DesignTime>true</DesignTime>
+		</Compile>
+	</ItemGroup>
+	
+
+	<!--<Target Name="GenerateMod" AfterTargets="PostBuildEvent">
+		<ItemGroup>
+			<RemovePlugins Include="../mod/newest/plugins/*.*" />
+			<RemovePlugins Include="../mod/plugins/*.*" />
+		</ItemGroup>
+		
+		<ItemGroup>
+			<CopyPlugins Include="$(TargetPath)" />
+			--><!-- <CopyPlugins Include="$(TargetDir)MonoWeaver.dll" /> --><!--
+			<CopyPlugins Include="../../CommonUtils/lib/Newtonsoft.Json.dll" />
+			--><!-- 只在 Debug 时复制 PDB --><!--
+			<CopyPlugins Condition="'$(Configuration)' == 'Debug'" Include="$(TargetDir)$(TargetName).pdb" />
+		</ItemGroup>
+		
+		<Delete Files="@(RemovePlugins)" />
+		
+		--><!-- 复制到 newest --><!--
+		--><!-- <Copy SourceFiles="@(CopyPlugins)" DestinationFolder="../mod/newest/plugins/" /> --><!--
+		--><!-- Release 时额外清理 PDB --><!--
+		--><!-- <Delete Condition="'$(Configuration)' == 'Release'" Files="../mod/newest/plugins/*.pdb" /> --><!--
+
+		--><!-- 复制到 plugins --><!--
+		<Copy SourceFiles="@(CopyPlugins)" DestinationFolder="../mod/plugins/" />
+		--><!-- Release 时额外清理 PDB --><!--
+		<Delete Condition="'$(Configuration)' == 'Release'" Files="../mod/plugins/*.pdb" />
+	</Target>-->
+	
+	<Target Name="GenerateMod" AfterTargets="PostBuildEvent">
+		<PropertyGroup>
+			<Plugins>../mod/plugins/</Plugins>
+		</PropertyGroup>
+
+		<!-- 主 DLL：直接覆盖（不先删除） -->
+		<Copy SourceFiles="$(TargetPath)" DestinationFolder="$(Plugins)" />
+
+		<!-- Newtonsoft：内容相同就跳过（不产生文件事件） -->
+		<Copy SourceFiles="../../CommonUtils/lib/Newtonsoft.Json.dll" DestinationFolder="$(Plugins)" SkipUnchangedFiles="true" />
+
+		<!-- PDB：只在 Debug 模式复制，Release 模式删除 -->
+		<Copy Condition="'$(Configuration)' == 'Debug'" SourceFiles="$(TargetDir)$(TargetName).pdb" DestinationFolder="$(Plugins)" />
+		<Delete Condition="'$(Configuration)' == 'Release'" Files="$(Plugins)$(TargetName).pdb" />
+	</Target>
+	
+</Project>

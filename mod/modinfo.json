@@ -1,0 +1,19 @@
+{
+  "id": "mycreature.redlyn",
+  "name": "My Creature",
+  "version": "0.1.0",
+  "authors": "Redlyn",
+  "description": "My Creature",
+    "requirements": [
+    "fisobs"
+  ],
+  "requirements_names": [
+    "Fisobs"
+  ],
+  "tags": [
+    "Creature",
+    "Base",
+    "Downpour",
+    "Watcher"
+  ]
+}
