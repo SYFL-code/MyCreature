@@ -7,8 +7,8 @@ using UnityEngine;
 
 namespace Mosquitoes;
 
-// 会呼吸的生物 肺部/氧气系统
-// 昆虫状生物 中毒系统
+// AirBreatherCreature 会呼吸的生物 肺部/氧气系统
+// InsectoidCreature 虫形生物 中毒系统
 // 玩家可食用
 sealed class Mosquito : InsectoidCreature, IPlayerEdible
 {
@@ -56,7 +56,7 @@ sealed class Mosquito : InsectoidCreature, IPlayerEdible
 
 	public override Color ShortCutColor()
 	{
-		return new Color(.7f, .4f, .4f);
+		return new Color(0.7f, 0.4f, 0.4f);
 	}
 
 	public override void InitiateGraphicsModule()
@@ -73,18 +73,22 @@ sealed class Mosquito : InsectoidCreature, IPlayerEdible
 			return;
 		}
 
+
 		lastNeedleDir = needleDir;
 
-		if (grasps[0] == null && mode == Mode.StuckInChunk) {
+		if (grasps[0] == null && mode == Mode.StuckInChunk)
+		{
 			ChangeMode(Mode.Free);
 		}
 
-		switch (mode) {
+		switch (mode)
+		{
 			case Mode.Free:
 				needleDir += travelDir * .1f; // 移动方向影响针头方向
 				needleDir.y = -Mathf.Abs(needleDir.y) - .1f; // 针头向下
 				needleDir.Normalize(); // 归一化
 				break;
+
 			case Mode.StuckInChunk:
 				BodyChunk stuckInChunk = grasps[0].grabbedChunk;
 
@@ -92,9 +96,11 @@ sealed class Mosquito : InsectoidCreature, IPlayerEdible
 				firstChunk.pos = StuckInChunkPos(stuckInChunk) + Custom.RotateAroundOrigo(stuckPos, Custom.VecToDeg(stuckInChunk.Rotation));
 				firstChunk.vel *= 0f;
 
-				if (stuckCounter > 0) {
+				if (stuckCounter > 0)
+				{
 					stuckCounter -= Consious ? 1 : 3;
-				} else {
+				}
+				else {
 					ChangeMode(Mode.Free);
 					break;
 				}
@@ -118,9 +124,12 @@ sealed class Mosquito : InsectoidCreature, IPlayerEdible
 			}
 		}
 
-		if (Consious) {
+		if (Consious)
+		{
 			Act();
-		} else {
+		}
+		else
+		{
 			// 如果被抓住，允许穿过地板
 			GoThroughFloors = grabbedBy.Any();
 		}
@@ -158,15 +167,13 @@ sealed class Mosquito : InsectoidCreature, IPlayerEdible
 		var movementConnection = pather!.FollowPath(room.GetWorldCoordinate(followingPos), true);// true:实际上正在沿着这条路径前进
 
 		// 如果没拿到有效连接，再试一次
-		if (movementConnection == default)
-		{
+		if (movementConnection == default) {
 			movementConnection = pather.FollowPath(room.GetWorldCoordinate(followingPos), true);
 		}
 
 
 		// 如果有移动连接，执行 Run
-		if (movementConnection != default)
-		{
+		if (movementConnection != default) {
 			Run(movementConnection);
 		}
 		// 否则尝试朝上一个连接的目标移动，并处理水中挣扎
@@ -192,13 +199,19 @@ sealed class Mosquito : InsectoidCreature, IPlayerEdible
 	// 移动到指定位置
 	void MoveTowards(Vector2 moveTo)
 	{
+		// 计算朝向目标的方向 dir
 		Vector2 dir = Custom.DirVec(firstChunk.pos, moveTo);
+		// 设置 travelDir，用于更新 needleDir
 		travelDir = dir;
+		// 根据淹没程度调整垂直速度
 		bodyChunks[0].vel.y += Mathf.Lerp(gravity, gravity - buoyancy, bodyChunks[0].submersion);
+		// 直接移动位置，并施加朝向目标的速度
 		firstChunk.pos += dir;
 		firstChunk.vel += dir * 2f;
+		// 速度乘以 0.85 模拟空气阻力
 		firstChunk.vel *= 0.85f;
 
+		// 如果目标在当前位置下方超过 5 像素，则允许穿过地板
 		GoThroughFloors = moveTo.y < bodyChunks[0].pos.y - 5f;
 	}
 
@@ -208,6 +221,7 @@ sealed class Mosquito : InsectoidCreature, IPlayerEdible
 		// 如果是捷径或 NPC 运输，设置进入捷径的起始位置
 		if (followingConnection.type is MovementConnection.MovementType.ShortCut or MovementConnection.MovementType.NPCTransportation)
 		{
+			// 进入捷径的起始位置
 			enteringShortCut = new IntVector2?(followingConnection.StartTile);
 
 			if (followingConnection.type == MovementConnection.MovementType.NPCTransportation)
@@ -226,6 +240,7 @@ sealed class Mosquito : InsectoidCreature, IPlayerEdible
 		lastFollowedConnection = followingConnection;
 	}
 
+	// 获取卡住时的块位置
 	Vector2 StuckInChunkPos(BodyChunk chunk)
 	{
 		return chunk.owner?.graphicsModule is PlayerGraphics g ? g.drawPositions[chunk.index, 0] : chunk.pos;
@@ -244,25 +259,33 @@ sealed class Mosquito : InsectoidCreature, IPlayerEdible
 		}
 	}
 
+	// 将蚊子卡入目标生物的块中
 	void StickIntoChunk(PhysicalObject otherObject, int otherChunk)
 	{
 		stuckCounter =
 			otherObject switch
-		{
-			Creature { dead: false } => Random.Range(75, 150),
-			Creature => Random.Range(50, 100),
-			_ => Random.Range(25, 50),
-		};
+			{
+				Creature { dead: false } => Random.Range(75, 150),
+				Creature => Random.Range(50, 100),
+				_ => Random.Range(25, 50),
+			};
 
 		BodyChunk chunk = otherObject.bodyChunks[otherChunk];
 
-		firstChunk.pos = chunk.pos + (Custom.DirVec(chunk.pos, firstChunk.pos) * chunk.rad) + (Custom.DirVec(chunk.pos, firstChunk.pos) * 11f);
+
+		Vector2 dir = Custom.DirVec(chunk.pos, firstChunk.pos);
+		firstChunk.pos = chunk.pos + (dir * (chunk.rad + 11f));
+
+		// 计算卡住位置和方向
 		stuckPos = Custom.RotateAroundOrigo(firstChunk.pos - StuckInChunkPos(chunk), -Custom.VecToDeg(chunk.Rotation));
-		stuckDir = Custom.RotateAroundOrigo(Custom.DirVec(firstChunk.pos, Custom.DirVec(firstChunk.pos, chunk.pos)), -Custom.VecToDeg(chunk.Rotation));
+		// 疑似bug
+		//stuckDir = Custom.RotateAroundOrigo(Custom.DirVec(firstChunk.pos, Custom.DirVec(firstChunk.pos, chunk.pos)), -Custom.VecToDeg(chunk.Rotation));
+		stuckDir = Custom.RotateAroundOrigo(Custom.DirVec(firstChunk.pos, chunk.pos), -Custom.VecToDeg(chunk.Rotation));
+
 
 		// Grab(PhysicalObject obj, int graspUsed, int chunkGrabbed,
 		//  Grasp.Shareability shareability, float dominance, bool overrideEquallyDominant, bool pacifying)
-		// 可分享性 优势地位 覆盖“同等主导” 安抚
+		// 可分享性 优势地位 覆盖同等主导 安抚
 		Grab(otherObject, 0, otherChunk, Grasp.Shareability.CanOnlyShareWithNonExclusive, 0.5f, false, false);
 
 		if (grasps[0]?.grabbed is Creature grabbed)
@@ -284,13 +307,14 @@ sealed class Mosquito : InsectoidCreature, IPlayerEdible
 		if (mode != newMode)
 		{
 			mode = newMode;
-			CollideWithTerrain = mode == Mode.Free;
+			base.CollideWithTerrain = mode == Mode.Free;
 
 			if (mode == Mode.Free)
 			{
 				abstractPhysicalObject.LoseAllStuckObjects();
 				LoseAllGrasps();
 				Stun(20);
+				//                                                                loop  vol 音量, pitch 音调
 				room.PlaySound(SoundID.Spear_Dislodged_From_Creature, firstChunk, false, 0.8f, 1.2f);
 			}
 			else
@@ -310,7 +334,7 @@ sealed class Mosquito : InsectoidCreature, IPlayerEdible
 
 		float speed = Mathf.Max(1, directionAndMomentum.GetValueOrDefault().magnitude);
 
-		if (bloat > 0.75f && Random.value < speed * (bloat - 0.65f)) {
+		if (bloat > 0.75f && speed * (bloat - 0.65f) > Random.value) {
 			explodeCounter += 20;
 
 			Debug.Log("exploded from violence");
@@ -319,12 +343,13 @@ sealed class Mosquito : InsectoidCreature, IPlayerEdible
 
 	int bites = 2; // 剩余咬数
 
-    public int BitesLeft => bites; // 剩余咬数
-    public int FoodPoints => (int)Mathf.Lerp(1f, 3f, bloat); // 食物点数
-    bool IPlayerEdible.Edible => true; // 可食用
-    bool IPlayerEdible.AutomaticPickUp => false; // 自动拾取
+	// IPlayerEdible 接口实现
+	public int BitesLeft => bites; // 剩余咬数
+	public int FoodPoints => (int)Mathf.Lerp(1f, 3f, bloat); // 食物点数
+	bool IPlayerEdible.Edible => true; // 可食用
+	bool IPlayerEdible.AutomaticPickUp => false; // 自动拾取
 
-    void IPlayerEdible.ThrowByPlayer() { }
+	void IPlayerEdible.ThrowByPlayer() { }
 
 	void IPlayerEdible.BitByPlayer(Grasp grasp, bool eu)
 	{
@@ -339,6 +364,7 @@ sealed class Mosquito : InsectoidCreature, IPlayerEdible
 
 		room.PlaySound(bites == 0 ? SoundID.Slugcat_Final_Bite_Fly : SoundID.Slugcat_Bite_Fly, firstChunk.pos);
 
+		// 移动到外部更新
 		firstChunk.MoveFromOutsideMyUpdate(eu, grasp.grabber.mainBodyChunk.pos);
 
 		if (bites == 0 && grasp.grabber is Player p)

@@ -79,8 +79,8 @@
 		</Reference>
 
 		<!-- 5. BepInEx 工具库 -->
-		<Reference Include="$(RainWorldDir)/BepInEx/utils/*.dll">
-		<Private>false</Private>
+		 <Reference Include="$(RainWorldDir)/BepInEx/utils/*.dll" Exclude="$(RainWorldDir)/BepInEx/utils/PUBLIC-Assembly-CSharp.dll">
+			<Private>false</Private>
 		</Reference>
 
 		<!-- 6. Unity 引擎 -->
@@ -110,7 +110,12 @@
 
 
 
-	<Target Name="GenerateBuildInfo" BeforeTargets="BeforeBuild">
+	<Target Name="BeforeBuildTasks" BeforeTargets="BeforeBuild">
+		<!-- 第一部分：复制 PUBLIC-Assembly-CSharp.dll 到 CommonUtils/lib -->
+		<Copy SourceFiles="$(RainWorldDir)\BepInEx\utils\PUBLIC-Assembly-CSharp.dll" DestinationFiles="..\..\CommonUtils\lib\PUBLIC-Assembly-CSharp.dll" SkipUnchangedFiles="true" Condition="Exists('$(RainWorldDir)\BepInEx\utils\PUBLIC-Assembly-CSharp.dll')" />
+		
+		
+		<!-- 第二部分：版本号递增 + 生成 BuildInfo.g.cs-->
 		<!-- 确保 version.txt 存在（位于项目根目录，即 src 的上一级） -->
 		<WriteLinesToFile Condition="!Exists('../version.txt')" File="../version.txt" Lines="00" Overwrite="true" />
 

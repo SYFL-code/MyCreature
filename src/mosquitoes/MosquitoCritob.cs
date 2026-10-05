@@ -47,17 +47,20 @@ sealed class MosquitoCritob : Critob
 		}
 		 */
 
-		CreatureTemplate t = new CreatureFormula(this) {
+		CreatureTemplate t = new CreatureFormula(this)
+		{
 			DefaultRelationship = new(CreatureTemplate.Relationship.Type.Eats, 0.25f),
 			HasAI = true,
 			InstantDeathDamage = 1,
 			Pathing = PreBakedPathing.Ancestral(CreatureType.Fly),
 
-			TileResistances = new() {
+			TileResistances = new()
+			{
 				// 空气   阻力 允许
 				Air = new(1, Allowed),
 			},
-			ConnectionResistances = new() {
+			ConnectionResistances = new()
+			{
 				// 标准连接
 				Standard = new(1, Allowed),
 				// 对角线
@@ -72,10 +75,12 @@ sealed class MosquitoCritob : Critob
 				BetweenRooms = new(1, Allowed),
 			},
 
-			DamageResistances = new() {
+			DamageResistances = new()
+			{
 				Base = 0.95f,
 			},
-			StunResistances = new() {
+			StunResistances = new()
+			{
 				Base = 0.6f,
 			}
 		}.IntoTemplate();
@@ -140,9 +145,11 @@ sealed class MosquitoCritob : Critob
 		Relationships self = new(Mosquito);
 
 		// 静态世界.生物模板.所有模板
-		foreach (var template in StaticWorld.creatureTemplates) {
+		foreach (var template in StaticWorld.creatureTemplates)
+		{
 			// quantified 量化
-			if (template.quantified) {
+			if (template.quantified)
+			{
 				// 忽略
 				self.Ignores(template.type);
 				// 被忽略
@@ -277,7 +284,8 @@ sealed class MosquitoCritob : Critob
 		// The CentiShields example demonstrates this.
 		// 如果不需要 `forObject` 参数，请将一个 ItemProperties 实例作为静态对象存储，并返回该实例。
 		// CentiShields 示例对此进行了演示。
-		if (crit is Mosquito mosquito) {
+		if (crit is Mosquito mosquito)
+		{
 			return new MosquitoProperties(mosquito);
 		}
 
