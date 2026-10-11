@@ -122,7 +122,16 @@ public sealed class Plugin : BaseUnityPlugin
 		On.RainWorld.OnModsDisabled += On_RainWorld_OnModsDisabled;
 
 
-		Content.Register(new MosquitoCritob());
+
+		#region BaitPlantMod
+		{
+			HookManager.Register(
+				Hook: () => Content.Register(new MosquitoCritob()),
+				UnHook: () => Log.LogInfo("MosquitoCritob UnHook called")
+			);
+		}
+		#endregion
+
 		//Hooks.RegisterHooks();
 
 		CommonUtils.Core.HookManager.Initialize();
